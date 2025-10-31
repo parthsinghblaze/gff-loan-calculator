@@ -28,3 +28,7 @@ body {
 input {
   color: #0a0a0a !important;
 }
+
+strong{
+  color: black !important;
+}
