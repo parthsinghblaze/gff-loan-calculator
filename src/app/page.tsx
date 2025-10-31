@@ -113,7 +113,7 @@ export default function LoanCalculator() {
   };
 
   const generatePDF = () => {
-    const doc = new jsPDF();
+    const doc : any = new jsPDF();
     let yPos = 20;
 
     // Title
@@ -189,8 +189,8 @@ export default function LoanCalculator() {
     yPos += 8;
 
     const principalTableData = principalComponents
-        .filter(c => c.type || c.amount)
-        .map(c => [c.type || 'N/A', `${parseFloat(c.amount || 0).toLocaleString()} KES`]);
+        .filter((c: any) => c.type || c.amount)
+        .map((c: any) => [c.type || 'N/A', `${parseFloat(c?.amount || 0).toLocaleString()} KES`]);
 
     if (principalTableData.length > 0) {
       autoTable(doc, {
@@ -220,7 +220,7 @@ export default function LoanCalculator() {
 
     const thirdPartyTableData = thirdPartyFees
         .filter(c => c.type || c.amount)
-        .map(c => [c.type || 'N/A', `${parseFloat(c.amount || 0).toLocaleString()} KES`, c.isRecurring ? 'Annual' : 'One-time']);
+        .map((c: any) => [c.type || 'N/A', `${parseFloat(c.amount || 0).toLocaleString()} KES`, c.isRecurring ? 'Annual' : 'One-time']);
 
     if (thirdPartyTableData.length > 0) {
       autoTable(doc, {
@@ -276,7 +276,7 @@ export default function LoanCalculator() {
         1: { halign: 'right', cellWidth: 60, fontStyle: 'bold' }
       },
       margin: { left: 20, right: 20 },
-      didParseCell: function (data) {
+      didParseCell: function (data: any) {
         if (data.section === 'body') {
           if (data.row.index === 0) {
             data.cell.styles.fillColor = [37, 99, 235];
