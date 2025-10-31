@@ -1168,7 +1168,7 @@ export default function LoanCalculator() {
                       <th className="px-3 py-3 text-right font-semibold">Interest</th>
                       <th className="px-3 py-3 text-right font-semibold">Principal</th>
                       <th className="px-3 py-3 text-right font-semibold">Base Princ</th>
-                      <th className="px-3 py-3 text-right font-semibold">Extra Princ</th>
+                      <th className="px-3 py-3 text-right font-semibold border-r-2">Extra Princ</th>
                       <th className="px-3 py-3 text-right font-semibold">3rd Party</th>
                       <th className="px-3 py-3 text-right font-semibold">Collateral</th>
                       <th className="px-3 py-3 text-right font-semibold">Out Int</th>
@@ -1194,34 +1194,34 @@ export default function LoanCalculator() {
                           </span>
                           </td>
                           <td className="px-3 py-2 text-right text-black font-semibold">
-                            {row.totalPayment.toFixed(2)}
+                            {row.totalPayment.toLocaleString()}
                           </td>
                           <td className="px-3 py-2 text-right text-orange-600">
-                            {row.interestPayment.toFixed(2)}
+                            {row.interestPayment.toLocaleString()}
                           </td>
                           <td className="px-3 py-2 text-right text-blue-600 font-semibold">
-                            {row.principalPayment.toFixed(2)}
+                            {row.principalPayment.toLocaleString()}
                           </td>
                           <td className="px-3 py-2 text-right text-blue-400">
-                            {row.principalPaymentFromBase.toFixed(2)}
+                            {row.principalPaymentFromBase.toLocaleString()}
                           </td>
-                          <td className="px-3 py-2 text-right text-green-600 font-semibold">
-                            {row.principalPaymentFromExtra.toFixed(2)}
+                          <td className="px-3 py-2 text-right text-black font-semibold border-r-2">
+                            {row.principalPaymentFromExtra.toLocaleString()}
                           </td>
                           <td className="px-3 py-2 text-right text-orange-600">
-                            {row.thirdPartyPayment.toFixed(2)}
+                            {row.thirdPartyPayment.toLocaleString()}
                           </td>
                           <td className="px-3 py-2 text-right text-green-600">
-                            {row.collateralPayment.toFixed(2)}
+                            {row.collateralPayment.toLocaleString()}
                           </td>
                           <td className="px-3 py-2 text-right text-orange-600">
                             {row.interestPrincipalPayment.toFixed(2)}
                           </td>
                           <td className="px-3 py-2 text-right text-blue-600">
-                            {row.principalComponentsPayment.toFixed(2)}
+                            {row.principalComponentsPayment.toLocaleString()}
                           </td>
                           <td className="px-3 py-2 text-right text-gray-600 font-semibold">
-                            {row.remainingPrincipal.toFixed(2)}
+                            {row.remainingPrincipal.toLocaleString(2)}
                           </td>
                         </tr>
                     ))}
