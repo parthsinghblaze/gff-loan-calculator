@@ -436,7 +436,8 @@ export default function LoanCalculator() {
     const collateralFeeAmount = parseFloat(collateralFee) || 0; // Use custom collateral fee
 
     // Calculate GFF fee (5%) of (Principal Components + Third Party Fees)
-    const gffFee = (totalPrincipalComponents + totalThirdPartyFees) * 0.05;
+    // const gffFee = (totalPrincipalComponents + totalThirdPartyFees) * 0.05;
+    const gffFee = 0;
 
     // Total Principal Components including GFF fee
     const totalPrincipalWithGff = totalPrincipalComponents + gffFee;
@@ -783,62 +784,6 @@ export default function LoanCalculator() {
               )}
 
               <div className="grid lg:grid-cols-2 gap-8 mb-8">
-                {/* Principal Components */}
-                <div className="bg-blue-50 rounded-lg p-6 border-2 border-blue-200">
-                  <h3 className="text-lg font-bold text-gray-800 mb-4">4. Principal Components (Priority 4)</h3>
-                  <p className="text-sm text-gray-600 mb-4">Wellness Warrior, Tuition, Upkeep + GFF Fee (5%)</p>
-                  {principalComponents.map((component) => (
-                      <div key={component.id} className="flex gap-2 mb-3">
-                        <input
-                            type="text"
-                            list="principalOptions"
-                            value={component.type}
-                            onChange={(e) => updatePrincipalComponent(component.id, 'type', e.target.value)}
-                            className="text-black flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="Select type"
-                        />
-                        <input
-                            type="number"
-                            value={component.amount}
-                            onChange={(e) => updatePrincipalComponent(component.id, 'amount', e.target.value)}
-                            className="w-32 px-3 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="Amount"
-                        />
-                        {principalComponents.length > 1 && (
-                            <button
-                                onClick={() => removePrincipalComponent(component.id)}
-                                className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                        )}
-                      </div>
-                  ))}
-                  <datalist id="principalOptions">
-                    {principalOptions.map(option => (
-                        <option key={option} value={option} />
-                    ))}
-                  </datalist>
-                  <button
-                      onClick={addPrincipalComponent}
-                      className="w-full mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add Principal Component
-                  </button>
-                  <div className="mt-4 p-3 bg-white rounded border border-blue-300">
-                    <div className="text-sm text-gray-600">Base Principal Components:</div>
-                    <div className="text-xl font-bold text-blue-600">
-                      {calculations.totalPrincipalComponents.toLocaleString()} KES
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      + GFF Fee (5%): {calculations.gffFee.toLocaleString()} KES
-                    </div>
-                    <div className="text-sm font-semibold text-green-600 mt-1">
-                      Total: {calculations.totalPrincipalWithGff.toLocaleString()} KES
-                    </div>
-                  </div>
-                </div>
 
                 {/* Third Party Fees */}
                 <div className="bg-orange-50 rounded-lg p-6 border-2 border-orange-200">
@@ -907,6 +852,92 @@ export default function LoanCalculator() {
                     </div>
                   </div>
                 </div>
+
+                {/* Collateral fee */}
+                <div className="bg-amber-50 rounded-lg p-6 border-2 border-blue-200">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    2. Collateral Fee (KES)
+                  </h3>
+                  <input
+                      type="number"
+                      value={collateralFee}
+                      onChange={(e) => setCollateralFee(e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                      placeholder="15000"
+                  />
+                  <div className="text-xs text-gray-500 mt-1">Custom collateral fee amount</div>
+                </div>
+
+                {/* Outstanding interest */}
+                <div className="bg-red-50 rounded-lg p-6 border-2 border-blue-200">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    3. Outstanding Interest (KES)
+                  </h3>
+                  <input
+                      type="number"
+                      value={outstandingInterest}
+                      onChange={(e) => setOutstandingInterest(e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition"
+                      placeholder="0"
+                  />
+                </div>
+                {/* Principal Components */}
+                <div className="bg-blue-50 rounded-lg p-6 border-2 border-blue-200">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4">4. Principal Components (Priority 4)</h3>
+                  {/*<p className="text-sm text-gray-600 mb-4">Wellness Warrior, Tuition, Upkeep + GFF Fee (5%)</p>*/}
+                  {principalComponents.map((component) => (
+                      <div key={component.id} className="flex gap-2 mb-3">
+                        <input
+                            type="text"
+                            list="principalOptions"
+                            value={component.type}
+                            onChange={(e) => updatePrincipalComponent(component.id, 'type', e.target.value)}
+                            className="text-black flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Select type"
+                        />
+                        <input
+                            type="number"
+                            value={component.amount}
+                            onChange={(e) => updatePrincipalComponent(component.id, 'amount', e.target.value)}
+                            className="w-32 px-3 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Amount"
+                        />
+                        {principalComponents.length > 1 && (
+                            <button
+                                onClick={() => removePrincipalComponent(component.id)}
+                                className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                        )}
+                      </div>
+                  ))}
+                  <datalist id="principalOptions">
+                    {principalOptions.map(option => (
+                        <option key={option} value={option} />
+                    ))}
+                  </datalist>
+                  <button
+                      onClick={addPrincipalComponent}
+                      className="w-full mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Principal Component
+                  </button>
+                  {/*<div className="mt-4 p-3 bg-white rounded border border-blue-300">*/}
+                  {/*  <div className="text-sm text-gray-600">Base Principal Components:</div>*/}
+                  {/*  <div className="text-xl font-bold text-blue-600">*/}
+                  {/*    {calculations.totalPrincipalComponents.toLocaleString()} KES*/}
+                  {/*  </div>*/}
+                  {/*  <div className="text-xs text-gray-500 mt-1">*/}
+                  {/*    + GFF Fee (5%): {calculations.gffFee.toLocaleString()} KES*/}
+                  {/*  </div>*/}
+                  {/*  <div className="text-sm font-semibold text-green-600 mt-1">*/}
+                  {/*    Total: {calculations.totalPrincipalWithGff.toLocaleString()} KES*/}
+                  {/*  </div>*/}
+                  {/*</div>*/}
+                </div>
+
               </div>
 
               {/* Other Inputs */}
@@ -924,32 +955,32 @@ export default function LoanCalculator() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    2. Collateral Fee (KES)
-                  </label>
-                  <input
-                      type="number"
-                      value={collateralFee}
-                      onChange={(e) => setCollateralFee(e.target.value)}
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
-                      placeholder="15000"
-                  />
-                  <div className="text-xs text-gray-500 mt-1">Custom collateral fee amount</div>
-                </div>
+                {/*<div>*/}
+                {/*  <label className="block text-sm font-semibold text-gray-700 mb-2">*/}
+                {/*    2. Collateral Fee (KES)*/}
+                {/*  </label>*/}
+                {/*  <input*/}
+                {/*      type="number"*/}
+                {/*      value={collateralFee}*/}
+                {/*      onChange={(e) => setCollateralFee(e.target.value)}*/}
+                {/*      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"*/}
+                {/*      placeholder="15000"*/}
+                {/*  />*/}
+                {/*  <div className="text-xs text-gray-500 mt-1">Custom collateral fee amount</div>*/}
+                {/*</div>*/}
 
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    3. Outstanding Interest (KES)
-                  </label>
-                  <input
-                      type="number"
-                      value={outstandingInterest}
-                      onChange={(e) => setOutstandingInterest(e.target.value)}
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition"
-                      placeholder="0"
-                  />
-                </div>
+                {/*<div>*/}
+                {/*  <label className="block text-sm font-semibold text-gray-700 mb-2">*/}
+                {/*    3. Outstanding Interest (KES)*/}
+                {/*  </label>*/}
+                {/*  <input*/}
+                {/*      type="number"*/}
+                {/*      value={outstandingInterest}*/}
+                {/*      onChange={(e) => setOutstandingInterest(e.target.value)}*/}
+                {/*      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition"*/}
+                {/*      placeholder="0"*/}
+                {/*  />*/}
+                {/*</div>*/}
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -967,9 +998,9 @@ export default function LoanCalculator() {
               </div>
 
               {/* Auto-calculated fees */}
-              <div className="grid md:grid-cols-2 gap-6 mb-8">
+              <div className="hidden grid md:grid-cols-2 gap-6 mb-8">
                 <div className="bg-green-50 rounded-lg p-6 border-2 border-green-200">
-                  <h3 className="text-lg font-bold text-gray-800 mb-4">2. Collateral Fee</h3>
+                  <h3 className="text-lg font-bold text-gray-800 mb-4">Collateral Fee</h3>
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Collateral Fee:</span>
