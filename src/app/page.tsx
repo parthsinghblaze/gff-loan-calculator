@@ -998,7 +998,7 @@ export default function LoanCalculator() {
                   {/* Outstanding interest */}
                   <div className="bg-orange-50 rounded-lg p-6 border-2 border-orange-200">
                     <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                      3. Outstanding Interest (KES)
+                      3. Outstanding Interest (KES) (till judgement)
                     </h3>
                     <input
                         type="number"
