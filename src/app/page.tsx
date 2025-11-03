@@ -87,7 +87,8 @@ export default function LoanCalculator() {
   // Function to copy shareable URL to clipboard
   const copyShareableUrl = () => {
     const params = serializeToParams();
-    const currentUrl = window.location.origin + window.location.pathname;
+    if (!isClient) return;
+    const currentUrl = window?.location?.origin + window?.location?.pathname;
     const shareableUrl = `${currentUrl}?${params}`;
 
     navigator.clipboard.writeText(shareableUrl).then(() => {
@@ -96,9 +97,10 @@ export default function LoanCalculator() {
     });
     alert("Copied to clipboard!");
   };
-
+  const [isClient, setIsClient] = useState(false);
   // Function to load from URL parameters on component mount
   useEffect(() => {
+    setIsClient(true);
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.toString()) {
@@ -110,6 +112,7 @@ export default function LoanCalculator() {
   // Function to generate a shortened shareable link
   const generateShortLink = () => {
     const params = serializeToParams();
+    if (!isClient) return;
     const currentUrl = window?.location?.origin + window.location.pathname;
     return `${currentUrl}?${params}`;
   };
