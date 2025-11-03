@@ -1,14 +1,15 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { Calculator, Plus, Trash2, TrendingUp, AlertCircle, Download, Calendar, Target } from 'lucide-react';
+import React, {useState, useMemo, useEffect} from 'react';
+import {Calculator, Plus, Trash2, TrendingUp, AlertCircle, Download, Calendar, Target, Copy} from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import Link from "next/link";
 
 export default function LoanCalculator() {
     // Set default values
     const [totalJudgmentAmount, setTotalJudgmentAmount] = useState('150000'); // New input field
-
+    const [showCopySuccess, setShowCopySuccess] = useState(false);
     const [thirdPartyFees, setThirdPartyFees] = useState([
         { id: 1, type: 'GFF Subscription', amount: '3000', isRecurring: true },
         { id: 2, type: 'Hospital Cash', amount: '2000', isRecurring: true },
@@ -26,6 +27,87 @@ export default function LoanCalculator() {
         'Hospital Cash',
         'Insurance',
     ];
+
+    // Function to serialize all data to URL parameters
+    const serializeToParams = () => {
+        const params = new URLSearchParams();
+
+        // Basic fields
+        params.set('judgment', totalJudgmentAmount);
+        params.set('upfront', upfrontAmount);
+        params.set('interest', outstandingInterest);
+        params.set('rate', interestRate);
+        params.set('target', targetWeeklyPayment);
+        params.set('collateral', collateralFee);
+
+        // Third party fees
+        thirdPartyFees.forEach((fee, index) => {
+            params.set(`fee_type_${index}`, fee.type);
+            params.set(`fee_amount_${index}`, fee.amount);
+            params.set(`fee_recurring_${index}`, fee.isRecurring.toString());
+        });
+
+        return params.toString();
+    };
+
+    // Function to deserialize from URL parameters
+    const deserializeFromParams = (params: URLSearchParams) => {
+        // Basic fields
+        if (params.get('judgment')) setTotalJudgmentAmount(params.get('judgment') || '150000');
+        if (params.get('upfront')) setUpfrontAmount(params.get('upfront') || '15000');
+        if (params.get('interest')) setOutstandingInterest(params.get('interest') || '43138');
+        if (params.get('rate')) setInterestRate(params.get('rate') || '20');
+        if (params.get('target')) setTargetWeeklyPayment(params.get('target') || '2200');
+        if (params.get('collateral')) setCollateralFee(params.get('collateral') || '15000');
+
+        // Third party fees
+        const newThirdPartyFees = [];
+        let index = 0;
+
+        while (params.get(`fee_type_${index}`)) {
+            newThirdPartyFees.push({
+                id: Date.now() + index,
+                type: params.get(`fee_type_${index}`) || '',
+                amount: params.get(`fee_amount_${index}`) || '',
+                isRecurring: params.get(`fee_recurring_${index}`) === 'true'
+            });
+            index++;
+        }
+
+        if (newThirdPartyFees.length > 0) {
+            setThirdPartyFees(newThirdPartyFees);
+        }
+    };
+
+    // Function to copy shareable URL to clipboard
+    const copyShareableUrl = () => {
+        const params = serializeToParams();
+        const currentUrl = window.location.origin + window.location.pathname;
+        const shareableUrl = `${currentUrl}?${params}`;
+
+        navigator.clipboard.writeText(shareableUrl).then(() => {
+            setShowCopySuccess(true);
+            setTimeout(() => setShowCopySuccess(false), 3000);
+        });
+    };
+
+    // Function to load from URL parameters on component mount
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.toString()) {
+                deserializeFromParams(urlParams);
+            }
+        }
+    }, []);
+
+    // Function to generate a shortened shareable link
+    const generateShortLink = () => {
+        const params = serializeToParams();
+        const currentUrl = window.location.origin + window.location.pathname;
+        return `${currentUrl}?${params}`;
+    };
+
 
     const addThirdPartyFee = () => {
         setThirdPartyFees([...thirdPartyFees, { id: Date.now(), type: '', amount: '', isRecurring: true }]);
@@ -677,6 +759,14 @@ export default function LoanCalculator() {
                                     <p className="text-blue-100">Fixed Tenure with Consistent Weekly Payments</p>
                                 </div>
                             </div>
+                            <div className="flex items-center gap-3">
+                            <button
+                                onClick={copyShareableUrl}
+                                className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition font-semibold shadow-lg"
+                                title="Copy shareable link"
+                            >
+                                    Share
+                            </button>
                             <button
                                 onClick={generatePDF}
                                 className="flex items-center gap-2 px-6 py-3 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition font-semibold shadow-lg"
@@ -684,6 +774,7 @@ export default function LoanCalculator() {
                                 <Download className="w-5 h-5" />
                                 Download PDF Report
                             </button>
+                            </div>
                         </div>
                     </div>
 
@@ -1217,6 +1308,37 @@ export default function LoanCalculator() {
                             </div>
                         </div>
                     </div>
+
+                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-6 mb-8 border-2 border-green-200">
+                        <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                            Share Your Calculation
+                        </h3>
+                        <div className="grid md:grid-cols-2 gap-6">
+                            <div>
+                                <p className="text-sm text-gray-600 mb-4">
+                                    Copy the shareable link below to share this exact calculation with others.
+                                    When they open the link, all values will be automatically populated.
+                                </p>
+                                <button
+                                    onClick={copyShareableUrl}
+                                    className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold w-full justify-center"
+                                >
+                                    <Copy className="w-4 h-4" />
+                                    Copy Shareable Link
+                                </button>
+                            </div>
+                            <div className="bg-white rounded-lg p-4 border-2 border-green-200">
+                                <div className="text-sm text-gray-600 mb-2">Current Shareable Link:</div>
+                                <div className="text-xs bg-gray-100 p-3 rounded border break-all font-mono text-gray-700">
+                                    {generateShortLink()}
+                                </div>
+                                <div className="text-xs text-gray-500 mt-2">
+                                    This link contains all your current input values as URL parameters.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
