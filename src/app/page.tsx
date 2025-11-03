@@ -1,35 +1,27 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { Calculator, Plus, Trash2, TrendingUp, AlertCircle, Download, Calendar, Target } from 'lucide-react';
+import React, {useState, useMemo, useEffect} from 'react';
+import {Calculator, Plus, Trash2, TrendingUp, AlertCircle, Download, Calendar, Target, Copy} from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import Link from "next/link";
 
 export default function LoanCalculator() {
   // Set default values
-  const [principalComponents, setPrincipalComponents] = useState([
-    { id: 1, type: 'Wellness Warrior', amount: '3000' },
-    { id: 2, type: 'Tuition', amount: '54000' },
-    { id: 3, type: 'Upkeep', amount: '69000' }
-  ]);
-
+  const [totalJudgmentAmount, setTotalJudgmentAmount] = useState('150000'); // New input field
+  const [showCopySuccess, setShowCopySuccess] = useState(false);
   const [thirdPartyFees, setThirdPartyFees] = useState([
-    { id: 1, type: 'GFF Subscription', amount: '3000', isRecurring: true },
+    { id: 1, type: 'GFF Subscription', amount: '5000', isRecurring: true },
     { id: 2, type: 'Hospital Cash', amount: '2000', isRecurring: true },
     { id: 3, type: 'Insurance', amount: '2000', isRecurring: true }
   ]);
 
   const [upfrontAmount, setUpfrontAmount] = useState('15000');
+  const [loanID, setLoanID] = useState('0');
   const [outstandingInterest, setOutstandingInterest] = useState('43138');
   const [interestRate, setInterestRate] = useState('20');
   const [targetWeeklyPayment, setTargetWeeklyPayment] = useState('2200');
-  const [collateralFee, setCollateralFee] = useState('15000'); // Changed to custom input
-
-  const principalOptions = [
-    'Wellness Warrior',
-    'Tuition',
-    'Upkeep',
-  ];
+  const [collateralFee, setCollateralFee] = useState('15000');
 
   const thirdPartyOptions = [
     'GFF Subscription',
@@ -37,21 +29,91 @@ export default function LoanCalculator() {
     'Insurance',
   ];
 
-  const addPrincipalComponent = () => {
-    setPrincipalComponents([...principalComponents, { id: Date.now(), type: '', amount: '' }]);
+  // Function to serialize all data to URL parameters
+  const serializeToParams = () => {
+    const params = new URLSearchParams();
+
+    // Basic fields
+    params.set('judgment', totalJudgmentAmount);
+    params.set('upfront', upfrontAmount);
+    params.set('interest', outstandingInterest);
+    params.set('rate', interestRate);
+    params.set('target', targetWeeklyPayment);
+    params.set('collateral', collateralFee);
+    params.set('loanID', loanID);
+
+    // Third party fees
+    thirdPartyFees.forEach((fee, index) => {
+      params.set(`fee_type_${index}`, fee.type);
+      params.set(`fee_amount_${index}`, fee.amount);
+      params.set(`fee_recurring_${index}`, fee.isRecurring.toString());
+    });
+
+    console.log("params", params)
+
+    return params.toString();
   };
 
-  const removePrincipalComponent = (id) => {
-    if (principalComponents.length > 1) {
-      setPrincipalComponents(principalComponents.filter(c => c.id !== id));
+  // Function to deserialize from URL parameters
+  const deserializeFromParams = (params: URLSearchParams) => {
+    // Basic fields
+    if (params.get('judgment')) setTotalJudgmentAmount(params.get('judgment') || '150000');
+    if (params.get('upfront')) setUpfrontAmount(params.get('upfront') || '15000');
+    if (params.get('interest')) setOutstandingInterest(params.get('interest') || '43138');
+    if (params.get('rate')) setInterestRate(params.get('rate') || '20');
+    if (params.get('target')) setTargetWeeklyPayment(params.get('target') || '2200');
+    if (params.get('collateral')) setCollateralFee(params.get('collateral') || '15000');
+    if (params.get('loanID')) setLoanID(params.get('loanID') || '0');
+
+    // Third party fees
+    const newThirdPartyFees = [];
+    let index = 0;
+
+    while (params.get(`fee_type_${index}`)) {
+      newThirdPartyFees.push({
+        id: Date.now() + index,
+        type: params.get(`fee_type_${index}`) || '',
+        amount: params.get(`fee_amount_${index}`) || '',
+        isRecurring: params.get(`fee_recurring_${index}`) === 'true'
+      });
+      index++;
+    }
+
+    if (newThirdPartyFees.length > 0) {
+      setThirdPartyFees(newThirdPartyFees);
     }
   };
 
-  const updatePrincipalComponent = (id, field, value) => {
-    setPrincipalComponents(principalComponents.map(c =>
-        c.id === id ? { ...c, [field]: value } : c
-    ));
+  // Function to copy shareable URL to clipboard
+  const copyShareableUrl = () => {
+    const params = serializeToParams();
+    const currentUrl = window.location.origin + window.location.pathname;
+    const shareableUrl = `${currentUrl}?${params}`;
+
+    navigator.clipboard.writeText(shareableUrl).then(() => {
+      setShowCopySuccess(true);
+      setTimeout(() => setShowCopySuccess(false), 3000);
+    });
+    alert("Copied to clipboard!");
   };
+
+  // Function to load from URL parameters on component mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.toString()) {
+        deserializeFromParams(urlParams);
+      }
+    }
+  }, []);
+
+  // Function to generate a shortened shareable link
+  const generateShortLink = () => {
+    const params = serializeToParams();
+    const currentUrl = window?.location?.origin + window.location.pathname;
+    return `${currentUrl}?${params}`;
+  };
+
 
   const addThirdPartyFee = () => {
     setThirdPartyFees([...thirdPartyFees, { id: Date.now(), type: '', amount: '', isRecurring: true }]);
@@ -75,14 +137,13 @@ export default function LoanCalculator() {
     ));
   };
 
-  // Function to find optimal tenure - CORRECTED VERSION
+  // Function to find optimal tenure
   const findOptimalTenure = (principal, weeklyRate, targetPayment) => {
     let minTenure = 1;
     let maxTenure = 500;
     let optimalTenure = minTenure;
     let optimalPayment = 0;
 
-    // Find the tenure that gives payment closest to but LESS THAN target
     for (let tenure = minTenure; tenure <= maxTenure; tenure++) {
       const payment = principal * weeklyRate / (1 - Math.pow(1 + weeklyRate, -tenure));
 
@@ -94,7 +155,6 @@ export default function LoanCalculator() {
       }
     }
 
-    // If we found a tenure with payment <= target, use it
     if (optimalPayment > 0) {
       return {
         tenure: optimalTenure,
@@ -102,7 +162,6 @@ export default function LoanCalculator() {
         extraPayment: targetPayment - optimalPayment
       };
     } else {
-      // If no tenure found with payment <= target, use minimum tenure (1 week)
       optimalPayment = principal * weeklyRate / (1 - Math.pow(1 + weeklyRate, -1));
       return {
         tenure: 1,
@@ -182,35 +241,31 @@ export default function LoanCalculator() {
       yPos = doc.lastAutoTable.finalY + 15;
     }
 
-    // Principal Components Section
+    // Judgment Amount Section
     doc.setFontSize(16);
     doc.setTextColor(37, 99, 235);
-    doc.text('Principal Components', 20, yPos);
+    doc.text('Judgment Amount Breakdown', 20, yPos);
     yPos += 8;
 
-    const principalTableData = principalComponents
-        .filter((c: any) => c.type || c.amount)
-        .map((c: any) => [c.type || 'N/A', `${parseFloat(c?.amount || 0).toLocaleString()} KES`]);
+    const judgmentData = [
+      ['Total Judgment Amount', `${(parseFloat(totalJudgmentAmount) || 0).toLocaleString()} KES`],
+      ['Less: Outstanding Interest', `- ${(parseFloat(outstandingInterest) || 0).toLocaleString()} KES`],
+      ['Less: Collateral Fee', `- ${(parseFloat(collateralFee) || 0).toLocaleString()} KES`],
+      ['Principal Components', `${calculations.totalPrincipalComponents.toLocaleString()} KES`]
+    ];
 
-    if (principalTableData.length > 0) {
-      autoTable(doc, {
-        startY: yPos,
-        head: [['Type', 'Amount']],
-        body: principalTableData,
-        theme: 'striped',
-        headStyles: { fillColor: [37, 99, 235] },
-        margin: { left: 20, right: 20 },
-        styles: { fontSize: 10 }
-      });
-      yPos = doc.lastAutoTable.finalY + 5;
-    }
-
-    doc.setFontSize(12);
-    doc.setTextColor(37, 99, 235);
-    doc.setFont(undefined, 'bold');
-    doc.text(`Total Principal Components: ${calculations.totalPrincipalComponents.toLocaleString()} KES`, 20, yPos);
-    doc.setFont(undefined, 'normal');
-    yPos += 12;
+    autoTable(doc, {
+      startY: yPos,
+      body: judgmentData,
+      theme: 'grid',
+      styles: { fontSize: 10 },
+      columnStyles: {
+        0: { fontStyle: 'bold', cellWidth: 100 },
+        1: { halign: 'right', cellWidth: 80 }
+      },
+      margin: { left: 20, right: 20 }
+    });
+    yPos = doc.lastAutoTable.finalY + 15;
 
     // Third Party Fees Section
     doc.setFontSize(16);
@@ -255,7 +310,7 @@ export default function LoanCalculator() {
       ['2. COLLATERAL FEE', `${(parseFloat(collateralFee) || 0).toLocaleString()}`],
       ['3. OUTSTANDING INTEREST', `${(parseFloat(outstandingInterest) || 0).toLocaleString()}`],
       ['4. PRINCIPAL COMPONENTS', ''],
-      ['   - Wellness Warrior, Tuition, Upkeep', `${calculations.totalPrincipalComponents.toLocaleString()}`],
+      ['   - Total Judgment Amount (less interest & collateral)', `${calculations.totalPrincipalComponents.toLocaleString()}`],
       ['   - GFF Fee (5%)', `${calculations.gffFee.toLocaleString()}`],
       ['   TOTAL PRINCIPAL COMPONENTS', `${calculations.totalPrincipalWithGff.toLocaleString()}`],
       ['TOTAL LOAN BALANCE', `${calculations.totalLoanBalance.toLocaleString()}`],
@@ -426,17 +481,20 @@ export default function LoanCalculator() {
   };
 
   const calculations = useMemo(() => {
-    // Calculate base amounts
-    const totalPrincipalComponents = principalComponents.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0);
+    // Calculate principal components from judgment amount
+    const totalJudgment = parseFloat(totalJudgmentAmount) || 0;
+    const outstandingInt = parseFloat(outstandingInterest) || 0;
+    const collateralFeeAmount = parseFloat(collateralFee) || 0;
+
+    // Principal Components = Total Judgment - Outstanding Interest - Collateral Fee
+    const totalPrincipalComponents = Math.max(0, totalJudgment - outstandingInt - collateralFeeAmount);
+
     const totalThirdPartyFees = thirdPartyFees.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0);
     const upfront = parseFloat(upfrontAmount) || 0;
-    const outstandingInt = parseFloat(outstandingInterest) || 0;
     const rate = parseFloat(interestRate) || 20;
     const targetPayment = parseFloat(targetWeeklyPayment) || 2200;
-    const collateralFeeAmount = parseFloat(collateralFee) || 0; // Use custom collateral fee
 
     // Calculate GFF fee (5%) of (Principal Components + Third Party Fees)
-    // const gffFee = (totalPrincipalComponents + totalThirdPartyFees) * 0.05;
     const gffFee = 0;
 
     // Total Principal Components including GFF fee
@@ -655,7 +713,7 @@ export default function LoanCalculator() {
       totalPrincipalComponents,
       totalThirdPartyFees,
       gffFee,
-      collateralFee: collateralFeeAmount, // Use custom collateral fee
+      collateralFee: collateralFeeAmount,
       totalPrincipalWithGff,
       totalLoanBalance,
       upfrontApplied: upfront,
@@ -688,9 +746,10 @@ export default function LoanCalculator() {
       // Financial ratios
       totalCostOfCredit: totalInterestPaid + totalThirdPartyFees + collateralFeeAmount + gffFee,
       amountFinanced: totalLoanAmount,
-      totalRepaymentAmount: totalPayments
+      totalRepaymentAmount: totalPayments,
+      totalJudgmentAmount: totalJudgment
     };
-  }, [principalComponents, thirdPartyFees, upfrontAmount, outstandingInterest, interestRate, targetWeeklyPayment, collateralFee]);
+  }, [totalJudgmentAmount, thirdPartyFees, upfrontAmount, outstandingInterest, interestRate, targetWeeklyPayment, collateralFee]);
 
   return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
@@ -706,18 +765,82 @@ export default function LoanCalculator() {
                     <p className="text-blue-100">Fixed Tenure with Consistent Weekly Payments</p>
                   </div>
                 </div>
-                <button
-                    onClick={generatePDF}
-                    className="flex items-center gap-2 px-6 py-3 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition font-semibold shadow-lg"
-                >
-                  <Download className="w-5 h-5" />
-                  Download PDF Report
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                      onClick={copyShareableUrl}
+                      className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition font-semibold shadow-lg"
+                      title="Copy shareable link"
+                  >
+                    Share
+                  </button>
+                  <button
+                      onClick={generatePDF}
+                      className="flex items-center gap-2 px-6 py-3 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition font-semibold shadow-lg"
+                  >
+                    <Download className="w-5 h-5" />
+                    Download PDF Report
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Input Form */}
             <div className="p-8">
+              {/* Total Judgment Amount */}
+              <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 mb-8 border-2 border-blue-200">
+                <h3 className="text-xl font-bold text-gray-800 mb-4">Total Judgment Amount</h3>
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Loan id
+                    </label>
+                    <input
+                        type="number"
+                        value={loanID}
+                        onChange={(e) => setLoanID(e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                        placeholder="171"
+                    />
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Total Judgment Amount (KES)
+                    </label>
+                    <input
+                        type="number"
+                        value={totalJudgmentAmount}
+                        onChange={(e) => setTotalJudgmentAmount(e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                        placeholder="150000"
+                    />
+                    <div className="text-xs text-gray-500 mt-1">
+                      This amount will be distributed to principal components after deducting outstanding interest and collateral fee
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-lg p-4 border-2 border-green-200">
+                    <div className="text-sm text-gray-600 mb-1">Judgment Amount Breakdown</div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-black">Total Judgment:</span>
+                        <span className="font-bold text-black">{(parseFloat(totalJudgmentAmount) || 0).toLocaleString()} KES</span>
+                      </div>
+                      <div className="flex justify-between text-red-600">
+                        <span>Less Outstanding Interest:</span>
+                        <span>- {(parseFloat(outstandingInterest) || 0).toLocaleString()} KES</span>
+                      </div>
+                      <div className="flex justify-between text-red-600">
+                        <span>Less Collateral Fee:</span>
+                        <span>- {(parseFloat(collateralFee) || 0).toLocaleString()} KES</span>
+                      </div>
+                      <div className="flex justify-between border-t pt-2">
+                        <span className="font-bold text-black">Principal Components:</span>
+                        <span className="font-bold text-green-600">
+                          {calculations.totalPrincipalComponents.toLocaleString()} KES
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Fixed Tenure Configuration */}
               <div className="hidden bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-6 mb-8 border-2 border-purple-200">
                 <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
@@ -784,7 +907,6 @@ export default function LoanCalculator() {
               )}
 
               <div className="grid lg:grid-cols-2 gap-8 mb-8">
-
                 {/* Third Party Fees */}
                 <div className="bg-orange-50 rounded-lg p-6 border-2 border-orange-200">
                   <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
@@ -853,91 +975,48 @@ export default function LoanCalculator() {
                   </div>
                 </div>
 
-                {/* Collateral fee */}
-                <div className="bg-amber-50 rounded-lg p-6 border-2 border-blue-200">
-                  <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                    2. Collateral Fee (KES)
-                  </h3>
-                  <input
-                      type="number"
-                      value={collateralFee}
-                      onChange={(e) => setCollateralFee(e.target.value)}
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
-                      placeholder="15000"
-                  />
-                  <div className="text-xs text-gray-500 mt-1">Custom collateral fee amount</div>
-                </div>
+                {/* Priority 2 & 3 */}
+                <div className="space-y-6">
+                  {/* Collateral fee */}
+                  <div className="bg-green-50 rounded-lg p-6 border-2 border-green-200">
+                    <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                      2. Collateral Fee (KES)
+                    </h3>
+                    <input
+                        type="number"
+                        value={collateralFee}
+                        onChange={(e) => setCollateralFee(e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                        placeholder="15000"
+                    />
+                    <div className="text-xs text-gray-500 mt-1">Custom collateral fee amount</div>
+                  </div>
 
-                {/* Outstanding interest */}
-                <div className="bg-red-50 rounded-lg p-6 border-2 border-blue-200">
-                  <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                    3. Outstanding Interest (KES)
-                  </h3>
-                  <input
-                      type="number"
-                      value={outstandingInterest}
-                      onChange={(e) => setOutstandingInterest(e.target.value)}
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition"
-                      placeholder="0"
-                  />
+                  {/* Outstanding interest */}
+                  <div className="bg-orange-50 rounded-lg p-6 border-2 border-orange-200">
+                    <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                      3. Outstanding Interest (KES)
+                    </h3>
+                    <input
+                        type="number"
+                        value={outstandingInterest}
+                        onChange={(e) => setOutstandingInterest(e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition"
+                        placeholder="0"
+                    />
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-6 border-2 border-gray-200">
+                    <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                      4. Principal Components (KES)
+                    </h3>
+                    <div className="text-xl font-bold text-blue-600">
+                      {calculations.totalPrincipalComponents.toLocaleString()} KES
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Auto-calculated from Judgment Amount
+                    </div>
+                  </div>
                 </div>
-                {/* Principal Components */}
-                <div className="bg-blue-50 rounded-lg p-6 border-2 border-blue-200">
-                  <h3 className="text-lg font-bold text-gray-800 mb-4">4. Principal Components (Priority 4)</h3>
-                  {/*<p className="text-sm text-gray-600 mb-4">Wellness Warrior, Tuition, Upkeep + GFF Fee (5%)</p>*/}
-                  {principalComponents.map((component) => (
-                      <div key={component.id} className="flex gap-2 mb-3">
-                        <input
-                            type="text"
-                            list="principalOptions"
-                            value={component.type}
-                            onChange={(e) => updatePrincipalComponent(component.id, 'type', e.target.value)}
-                            className="text-black flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="Select type"
-                        />
-                        <input
-                            type="number"
-                            value={component.amount}
-                            onChange={(e) => updatePrincipalComponent(component.id, 'amount', e.target.value)}
-                            className="w-32 px-3 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="Amount"
-                        />
-                        {principalComponents.length > 1 && (
-                            <button
-                                onClick={() => removePrincipalComponent(component.id)}
-                                className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                        )}
-                      </div>
-                  ))}
-                  <datalist id="principalOptions">
-                    {principalOptions.map(option => (
-                        <option key={option} value={option} />
-                    ))}
-                  </datalist>
-                  <button
-                      onClick={addPrincipalComponent}
-                      className="w-full mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add Principal Component
-                  </button>
-                  {/*<div className="mt-4 p-3 bg-white rounded border border-blue-300">*/}
-                  {/*  <div className="text-sm text-gray-600">Base Principal Components:</div>*/}
-                  {/*  <div className="text-xl font-bold text-blue-600">*/}
-                  {/*    {calculations.totalPrincipalComponents.toLocaleString()} KES*/}
-                  {/*  </div>*/}
-                  {/*  <div className="text-xs text-gray-500 mt-1">*/}
-                  {/*    + GFF Fee (5%): {calculations.gffFee.toLocaleString()} KES*/}
-                  {/*  </div>*/}
-                  {/*  <div className="text-sm font-semibold text-green-600 mt-1">*/}
-                  {/*    Total: {calculations.totalPrincipalWithGff.toLocaleString()} KES*/}
-                  {/*  </div>*/}
-                  {/*</div>*/}
-                </div>
-
               </div>
 
               {/* Other Inputs */}
@@ -955,33 +1034,6 @@ export default function LoanCalculator() {
                   />
                 </div>
 
-                {/*<div>*/}
-                {/*  <label className="block text-sm font-semibold text-gray-700 mb-2">*/}
-                {/*    2. Collateral Fee (KES)*/}
-                {/*  </label>*/}
-                {/*  <input*/}
-                {/*      type="number"*/}
-                {/*      value={collateralFee}*/}
-                {/*      onChange={(e) => setCollateralFee(e.target.value)}*/}
-                {/*      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"*/}
-                {/*      placeholder="15000"*/}
-                {/*  />*/}
-                {/*  <div className="text-xs text-gray-500 mt-1">Custom collateral fee amount</div>*/}
-                {/*</div>*/}
-
-                {/*<div>*/}
-                {/*  <label className="block text-sm font-semibold text-gray-700 mb-2">*/}
-                {/*    3. Outstanding Interest (KES)*/}
-                {/*  </label>*/}
-                {/*  <input*/}
-                {/*      type="number"*/}
-                {/*      value={outstandingInterest}*/}
-                {/*      onChange={(e) => setOutstandingInterest(e.target.value)}*/}
-                {/*      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition"*/}
-                {/*      placeholder="0"*/}
-                {/*  />*/}
-                {/*</div>*/}
-
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Interest Rate (% per annum)
@@ -995,40 +1047,27 @@ export default function LoanCalculator() {
                   />
                   <div className="text-xs text-gray-500 mt-1">Compounded daily</div>
                 </div>
-              </div>
 
-              {/* Auto-calculated fees */}
-              <div className="hidden grid md:grid-cols-2 gap-6 mb-8">
-                <div className="bg-green-50 rounded-lg p-6 border-2 border-green-200">
-                  <h3 className="text-lg font-bold text-gray-800 mb-4">Collateral Fee</h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Collateral Fee:</span>
-                      <span className="text-lg font-bold text-green-600">
-                                            {(parseFloat(collateralFee) || 0).toLocaleString()} KES
-                                        </span>
-                    </div>
-                    <div className="text-xs text-gray-500 mt-2">
-                      This is a custom input field. Enter the collateral fee amount directly.
-                    </div>
-                  </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Target Weekly Payment (KES)
+                  </label>
+                  <input
+                      type="number"
+                      value={targetWeeklyPayment}
+                      onChange={(e) => setTargetWeeklyPayment(e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition"
+                      placeholder="2200"
+                  />
                 </div>
 
-                <div className="bg-purple-50 rounded-lg p-6 border-2 border-purple-200">
-                  <h3 className="text-lg font-bold text-gray-800 mb-4">GFF Fee (Auto-calculated)</h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Base Amount:</span>
-                      <span className="font-semibold text-black">
-                                            {(calculations.totalPrincipalComponents + calculations.totalThirdPartyFees).toLocaleString()} KES
-                                        </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">GFF Fee (5%):</span>
-                      <span className="text-lg font-bold text-purple-600">
-                                            {calculations.gffFee.toLocaleString()} KES
-                                        </span>
-                    </div>
+                <div className="hidden bg-blue-50 rounded-lg p-4 border-2 border-blue-200">
+                  <div className="text-sm text-gray-600 mb-1">4. Principal Components</div>
+                  <div className="text-xl font-bold text-blue-600">
+                    {calculations.totalPrincipalComponents.toLocaleString()} KES
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    Auto-calculated from Judgment Amount
                   </div>
                 </div>
               </div>
@@ -1061,11 +1100,11 @@ export default function LoanCalculator() {
                   <div className="bg-white rounded-lg p-4 shadow-sm border border-blue-200">
                     <div className="text-sm text-gray-600 mb-1">4. Principal Components</div>
                     <div className="text-lg font-bold text-blue-600">
-                      {calculations.totalPrincipalWithGff.toLocaleString()} KES
+                      {calculations.totalPrincipalComponents.toLocaleString()} KES
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      Base: {calculations.totalPrincipalComponents.toLocaleString()} + GFF: {calculations.gffFee.toLocaleString()}
-                    </div>
+                    {/*<div className="text-xs text-gray-500 mt-1">*/}
+                    {/*    From Judgment Amount*/}
+                    {/*</div>*/}
                   </div>
                 </div>
 
@@ -1285,6 +1324,37 @@ export default function LoanCalculator() {
                 </div>
               </div>
             </div>
+
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-6 mb-8 border-2 border-green-200">
+              <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                Share Your Calculation
+              </h3>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Copy the shareable link below to share this exact calculation with others.
+                    When they open the link, all values will be automatically populated.
+                  </p>
+                  <button
+                      onClick={copyShareableUrl}
+                      className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold w-full justify-center"
+                  >
+                    <Copy className="w-4 h-4" />
+                    Copy Shareable Link
+                  </button>
+                </div>
+                <div className="bg-white rounded-lg p-4 border-2 border-green-200">
+                  <div className="text-sm text-gray-600 mb-2">Current Shareable Link:</div>
+                  <div className="text-xs bg-gray-100 p-3 rounded border break-all font-mono text-gray-700">
+                    {generateShortLink()}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-2">
+                    This link contains all your current input values as URL parameters.
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
