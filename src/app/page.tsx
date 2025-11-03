@@ -1067,7 +1067,7 @@ export default function LoanCalculator() {
 
                   <div className="bg-gray-50 rounded-lg p-6 border-2 border-gray-200">
                     <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                      5. Principal Components (KES)
+                      4. Principal Components (KES)
                     </h3>
                     <div className="text-xl font-bold text-blue-600">
                       {calculations.totalPrincipalComponents.toLocaleString()} KES
