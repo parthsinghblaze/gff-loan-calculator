@@ -1294,7 +1294,7 @@ export default function LoanCalculator() {
                         Upfront payment is applied sequentially in priority order until fully allocated
                       </div>
                       <div className="text-xs text-yellow-700 mt-1">
-                        Priority 1 → Priority 2 → Priority 3 → Priority 4 → Priority 5
+                        Priority 1 → Priority 2 → Priority 3.1 → Priority 3.2 → Priority 4
                       </div>
                     </div>
                   </div>
