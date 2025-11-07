@@ -313,10 +313,10 @@ export default function LoanCalculator() {
       ['WATERFALL PRIORITY BREAKDOWN', 'AMOUNT (KES)'],
       ['1. THIRD PARTY FEES', ''],
       ['   - GFF Subscription, Hospital Cash, Insurance', `${calculations.totalThirdPartyFees.toLocaleString()}`],
-      ['2. COLLATERAL FEE', `${(parseFloat(collateralFee) || 0).toLocaleString()}`],
-      ['3. OUTSTANDING INTEREST (Till Judgment)', `${(parseFloat(outstandingInterest) || 0).toLocaleString()}`],
-      ['4. OUTSTANDING INTEREST (After Judgment)', `${(parseFloat(outstandingInterestAfterJudgment) || 0).toLocaleString()}`],
-      ['5. PRINCIPAL COMPONENTS', ''],
+      ['2.1. OUTSTANDING INTEREST (Till Judgment)', `${(parseFloat(outstandingInterest) || 0).toLocaleString()}`],
+      ['2.2. OUTSTANDING INTEREST (After Judgment)', `${(parseFloat(outstandingInterestAfterJudgment) || 0).toLocaleString()}`],
+      ['3. COLLATERAL FEE', `${(parseFloat(collateralFee) || 0).toLocaleString()}`],
+      ['4. PRINCIPAL COMPONENTS', ''],
       ['   - Total Judgment Amount (less interest & collateral)', `${calculations.totalPrincipalComponents.toLocaleString()}`],
       // ['   - GFF Fee (5%)', `${calculations.gffFee.toLocaleString()}`],
       ['   TOTAL PRINCIPAL COMPONENTS', `${calculations.totalPrincipalWithGff.toLocaleString()}`],
@@ -366,10 +366,10 @@ export default function LoanCalculator() {
       const upfrontData = [
         ['Priority', 'Component', 'Amount Applied (KES)', 'Remaining After Upfront (KES)'],
         ['1', 'Third Party Fees', `${calculations.upfrontAllocation.appliedToThirdParty.toLocaleString()}`, `${(calculations.totalThirdPartyFees - calculations.upfrontAllocation.appliedToThirdParty).toLocaleString()}`],
-        ['2', 'Collateral Fee', `${calculations.upfrontAllocation.appliedToCollateral.toLocaleString()}`, `${(parseFloat(collateralFee) - calculations.upfrontAllocation.appliedToCollateral).toLocaleString()}`],
-        ['3', 'Outstanding Interest (Till Judgment)', `${calculations.upfrontAllocation.appliedToInterest.toLocaleString()}`, `${(parseFloat(outstandingInterest) - calculations.upfrontAllocation.appliedToInterest).toLocaleString()}`],
-        ['4', 'Outstanding Interest (After Judgment)', `${calculations.upfrontAllocation.appliedToInterestAfterJudgment.toLocaleString()}`, `${(parseFloat(outstandingInterestAfterJudgment) - calculations.upfrontAllocation.appliedToInterestAfterJudgment).toLocaleString()}`],
-        ['5', 'Principal Components', `${calculations.upfrontAllocation.appliedToPrincipal.toLocaleString()}`, `${(calculations.totalPrincipalWithGff - calculations.upfrontAllocation.appliedToPrincipal).toLocaleString()}`],
+        ['2.1', 'Outstanding Interest (Till Judgment)', `${calculations.upfrontAllocation.appliedToInterest.toLocaleString()}`, `${(parseFloat(outstandingInterest) - calculations.upfrontAllocation.appliedToInterest).toLocaleString()}`],
+        ['2.2', 'Outstanding Interest (After Judgment)', `${calculations.upfrontAllocation.appliedToInterestAfterJudgment.toLocaleString()}`, `${(parseFloat(outstandingInterestAfterJudgment) - calculations.upfrontAllocation.appliedToInterestAfterJudgment).toLocaleString()}`],
+        ['3', 'Collateral Fee', `${calculations.upfrontAllocation.appliedToCollateral.toLocaleString()}`, `${(parseFloat(collateralFee) - calculations.upfrontAllocation.appliedToCollateral).toLocaleString()}`],
+        ['4', 'Principal Components', `${calculations.upfrontAllocation.appliedToPrincipal.toLocaleString()}`, `${(calculations.totalPrincipalWithGff - calculations.upfrontAllocation.appliedToPrincipal).toLocaleString()}`],
         ['', 'TOTAL APPLIED', `${calculations.upfrontApplied.toLocaleString()}`, '']
       ];
 
@@ -449,9 +449,9 @@ export default function LoanCalculator() {
       row.principalPaymentFromBase.toFixed(2),
       row.principalPaymentFromExtra.toFixed(2),
       row.thirdPartyPayment.toFixed(2),
-      row.collateralPayment.toFixed(2),
       row.interestPrincipalPayment.toFixed(2),
       row.interestAfterJudgmentPayment?.toFixed(2) || '0.00',
+      row.collateralPayment.toFixed(2),
       row.principalComponentsPayment.toFixed(2),
       row.remainingPrincipal.toFixed(2)
     ]);
@@ -466,9 +466,9 @@ export default function LoanCalculator() {
         'Base Princ',
         'Extra Princ',
         '3rd Party',
-        'Collateral',
         'Out Int',
         'Out Int After',
+        'Collateral',
         'Principal Comp',
         'Balance'
       ]],
@@ -526,29 +526,29 @@ export default function LoanCalculator() {
     const appliedToThirdParty = Math.min(remainingUpfront, totalThirdPartyFees);
     remainingUpfront = Math.max(0, remainingUpfront - totalThirdPartyFees);
 
-    // 2. Collateral Fee (Priority 2)
-    const appliedToCollateral = Math.min(remainingUpfront, collateralFeeAmount);
-    remainingUpfront = Math.max(0, remainingUpfront - collateralFeeAmount);
-
-    // 3. Outstanding Interest (Priority 3)
+    // 2. Outstanding Interest (Priority 2) - MOVED UP
     const appliedToInterest = Math.min(remainingUpfront, outstandingInt);
     remainingUpfront = Math.max(0, remainingUpfront - outstandingInt);
 
-    // 4. Outstanding Interest After Judgment (Priority 4)
+    // 3. Outstanding Interest After Judgment (Priority 3) - MOVED UP
     const appliedToInterestAfterJudgment = Math.min(remainingUpfront, outstandingIntAfterJudgment);
     remainingUpfront = Math.max(0, remainingUpfront - outstandingIntAfterJudgment);
+
+    // 4. Collateral Fee (Priority 4) - MOVED DOWN
+    const appliedToCollateral = Math.min(remainingUpfront, collateralFeeAmount);
+    remainingUpfront = Math.max(0, remainingUpfront - collateralFeeAmount);
 
     // 5. Principal Components with GFF (Priority 5)
     const appliedToPrincipal = Math.min(remainingUpfront, totalPrincipalWithGff);
 
-    // Calculate remaining balances after upfront for tracking
+    // Update remaining balances after upfront
     let remainingThirdParty = Math.max(0, totalThirdPartyFees - appliedToThirdParty);
-    let remainingCollateral = Math.max(0, collateralFeeAmount - appliedToCollateral);
     let remainingInterest = Math.max(0, outstandingInt - appliedToInterest);
     let remainingInterestAfterJudgment = Math.max(0, outstandingIntAfterJudgment - appliedToInterestAfterJudgment);
+    let remainingCollateral = Math.max(0, collateralFeeAmount - appliedToCollateral);
     let remainingPrincipalComponents = Math.max(0, totalPrincipalWithGff - appliedToPrincipal);
 
-    let remainingPrincipal = remainingThirdParty + remainingCollateral + remainingInterest + remainingInterestAfterJudgment + remainingPrincipalComponents;
+    let remainingPrincipal = remainingThirdParty + remainingInterest + remainingInterestAfterJudgment + remainingCollateral + remainingPrincipalComponents; + remainingPrincipalComponents;
 
     // Calculate annual third party fees from recurring fees
     let annualThirdPartyFees = 0;
@@ -620,6 +620,9 @@ export default function LoanCalculator() {
       }
 
       // 2. Then pay principal according to waterfall priority from BASE payment
+      // In the weekly payment calculation, update the waterfall priority:
+
+// 2. Then pay principal according to waterfall priority from BASE payment
       if (basePayment > 0) {
         // PRIORITY 1: Third Party Fees
         if (remainingThirdParty > 0.01) {
@@ -630,42 +633,42 @@ export default function LoanCalculator() {
           currentPriority = 1;
         }
 
-        // PRIORITY 2: Collateral Fee (only if Priority 1 is paid off)
-        if (basePayment > 0 && remainingThirdParty <= 0.01 && remainingCollateral > 0.01) {
-          collateralPayment = Math.min(basePayment, remainingCollateral);
-          remainingCollateral -= collateralPayment;
-          basePayment -= collateralPayment;
-          principalPaymentFromBase += collateralPayment;
-          currentPriority = 2;
-        }
-
-        // PRIORITY 3: Outstanding Interest (only if Priorities 1 & 2 are paid off)
-        if (basePayment > 0 && remainingThirdParty <= 0.01 && remainingCollateral <= 0.01 && remainingInterest > 0.01) {
+        // PRIORITY 2: Outstanding Interest (only if Priority 1 is paid off)
+        if (basePayment > 0 && remainingThirdParty <= 0.01 && remainingInterest > 0.01) {
           interestPrincipalPayment = Math.min(basePayment, remainingInterest);
           remainingInterest -= interestPrincipalPayment;
           basePayment -= interestPrincipalPayment;
           principalPaymentFromBase += interestPrincipalPayment;
-          currentPriority = 3;
+          currentPriority = 2.1;
         }
 
-        // PRIORITY 4: Outstanding Interest After Judgment (only if Priorities 1-3 are paid off)
-        if (basePayment > 0 && remainingThirdParty <= 0.01 && remainingCollateral <= 0.01 &&
-            remainingInterest <= 0.01 && remainingInterestAfterJudgment > 0.01) {
+        // PRIORITY 3: Outstanding Interest After Judgment (only if Priorities 1-2 are paid off)
+        if (basePayment > 0 && remainingThirdParty <= 0.01 && remainingInterest <= 0.01 && remainingInterestAfterJudgment > 0.01) {
           interestAfterJudgmentPayment = Math.min(basePayment, remainingInterestAfterJudgment);
           remainingInterestAfterJudgment -= interestAfterJudgmentPayment;
           basePayment -= interestAfterJudgmentPayment;
           principalPaymentFromBase += interestAfterJudgmentPayment;
-          currentPriority = 4;
+          currentPriority = 2.2;
+        }
+
+        // PRIORITY 4: Collateral Fee (only if Priorities 1-3 are paid off)
+        if (basePayment > 0 && remainingThirdParty <= 0.01 && remainingInterest <= 0.01 &&
+            remainingInterestAfterJudgment <= 0.01 && remainingCollateral > 0.01) {
+          collateralPayment = Math.min(basePayment, remainingCollateral);
+          remainingCollateral -= collateralPayment;
+          basePayment -= collateralPayment;
+          principalPaymentFromBase += collateralPayment;
+          currentPriority = 3;
         }
 
         // PRIORITY 5: Principal Components with GFF (only if Priorities 1-4 are paid off)
-        if (basePayment > 0 && remainingThirdParty <= 0.01 && remainingCollateral <= 0.01 &&
-            remainingInterest <= 0.01 && remainingInterestAfterJudgment <= 0.01 && remainingPrincipalComponents > 0.01) {
+        if (basePayment > 0 && remainingThirdParty <= 0.01 && remainingInterest <= 0.01 &&
+            remainingInterestAfterJudgment <= 0.01 && remainingCollateral <= 0.01 && remainingPrincipalComponents > 0.01) {
           principalComponentsPayment = Math.min(basePayment, remainingPrincipalComponents);
           remainingPrincipalComponents -= principalComponentsPayment;
           basePayment -= principalComponentsPayment;
           principalPaymentFromBase += principalComponentsPayment;
-          currentPriority = 5;
+          currentPriority = 4;
         }
       }
 
@@ -1022,25 +1025,10 @@ export default function LoanCalculator() {
 
                 {/* Priority 2, 3, 4 & 5 */}
                 <div className="space-y-6">
-                  {/* Collateral fee */}
-                  <div className="bg-green-50 rounded-lg p-6 border-2 border-green-200">
-                    <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                      2. Collateral Fee (KES)
-                    </h3>
-                    <input
-                        type="number"
-                        value={collateralFee}
-                        onChange={(e) => setCollateralFee(e.target.value)}
-                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
-                        placeholder="15000"
-                    />
-                    <div className="text-xs text-gray-500 mt-1">Custom collateral fee amount</div>
-                  </div>
-
                   {/* Outstanding interest till judgment */}
                   <div className="bg-orange-50 rounded-lg p-6 border-2 border-orange-200">
                     <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                      3.1. Outstanding Interest (KES) (till judgement)
+                      2.1. Outstanding Interest (KES) (till judgement)
                     </h3>
                     <input
                         type="number"
@@ -1054,7 +1042,7 @@ export default function LoanCalculator() {
                   {/* Outstanding interest after judgment */}
                   <div className="bg-orange-50 rounded-lg p-6 border-2 border-orange-300">
                     <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                      3.2. Outstanding Interest After Judgment Till Date (KES)
+                      2.2. Outstanding Interest After Judgment Till Date (KES)
                     </h3>
                     <input
                         type="number"
@@ -1063,6 +1051,21 @@ export default function LoanCalculator() {
                         className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition"
                         placeholder="0"
                     />
+                  </div>
+
+                  {/* Collateral fee */}
+                  <div className="bg-green-50 rounded-lg p-6 border-2 border-green-200">
+                    <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                      3. Collateral Fee (KES)
+                    </h3>
+                    <input
+                        type="number"
+                        value={collateralFee}
+                        onChange={(e) => setCollateralFee(e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                        placeholder="15000"
+                    />
+                    <div className="text-xs text-gray-500 mt-1">Custom collateral fee amount</div>
                   </div>
 
                   <div className="bg-gray-50 rounded-lg p-6 border-2 border-gray-200">
@@ -1153,45 +1156,41 @@ export default function LoanCalculator() {
               {/* Comprehensive Summary */}
               <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 mb-8 border-2 border-blue-200">
                 <h3 className="text-xl font-bold text-gray-800 mb-4">Comprehensive Loan Summary</h3>
+                // Update the comprehensive summary section:
+
                 <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-4">
                   <div className="bg-white rounded-lg p-4 shadow-sm border border-orange-200">
                     <div className="text-sm text-gray-600 mb-1">1. Third Party Fees</div>
                     <div className="text-lg font-bold text-orange-600">
                       {calculations.totalThirdPartyFees.toLocaleString()} KES
                     </div>
-                    <div className="text-xs text-orange-600 mt-1">
-                      Sum of all third party components
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-lg p-4 shadow-sm border border-green-200">
-                    <div className="text-sm text-gray-600 mb-1">2. Collateral Fee</div>
-                    <div className="text-lg font-bold text-green-600">
-                      {(parseFloat(collateralFee) || 0).toLocaleString()} KES
-                    </div>
                   </div>
 
                   <div className="bg-white rounded-lg p-4 shadow-sm border border-orange-300">
-                    <div className="text-sm text-gray-600 mb-1">3.1. Outstanding Interest (Till Judgment)</div>
+                    <div className="text-sm text-gray-600 mb-1">2. Outstanding Interest (Till Judgment)</div>
                     <div className="text-lg font-bold text-orange-600">
                       {(parseFloat(outstandingInterest) || 0).toLocaleString()} KES
                     </div>
                   </div>
 
                   <div className="bg-white rounded-lg p-4 shadow-sm border border-orange-400">
-                    <div className="text-sm text-gray-600 mb-1">3.2. Outstanding Interest (After Judgment)</div>
+                    <div className="text-sm text-gray-600 mb-1">3. Outstanding Interest (After Judgment)</div>
                     <div className="text-lg font-bold text-orange-600">
                       {(parseFloat(outstandingInterestAfterJudgment) || 0).toLocaleString()} KES
                     </div>
                   </div>
 
+                  <div className="bg-white rounded-lg p-4 shadow-sm border border-green-200">
+                    <div className="text-sm text-gray-600 mb-1">4. Collateral Fee</div>
+                    <div className="text-lg font-bold text-green-600">
+                      {(parseFloat(collateralFee) || 0).toLocaleString()} KES
+                    </div>
+                  </div>
+
                   <div className="bg-white rounded-lg p-4 shadow-sm border border-blue-200">
-                    <div className="text-sm text-gray-600 mb-1">4. Principal Components</div>
+                    <div className="text-sm text-gray-600 mb-1">5. Principal Components</div>
                     <div className="text-lg font-bold text-blue-600">
                       {calculations.totalPrincipalComponents.toLocaleString()} KES
-                    </div>
-                    <div className="text-xs text-blue-600 mt-1">
-                      Judgment - Interest - Collateral
                     </div>
                   </div>
                 </div>
@@ -1247,44 +1246,29 @@ export default function LoanCalculator() {
                         <div className="text-lg font-bold text-orange-600">
                           {calculations.upfrontAllocation.appliedToThirdParty.toLocaleString()} KES
                         </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          Remaining: {(calculations.totalThirdPartyFees - calculations.upfrontAllocation.appliedToThirdParty).toLocaleString()} KES
-                        </div>
-                      </div>
-                      <div className="text-center bg-white p-4 rounded-lg border border-green-200">
-                        <div className="text-sm text-gray-600">2. Applied to Collateral</div>
-                        <div className="text-lg font-bold text-green-600">
-                          {calculations.upfrontAllocation.appliedToCollateral.toLocaleString()} KES
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          Remaining: {(parseFloat(collateralFee) - calculations.upfrontAllocation.appliedToCollateral).toLocaleString()} KES
-                        </div>
                       </div>
                       <div className="text-center bg-white p-4 rounded-lg border border-orange-300">
-                        <div className="text-sm text-gray-600">3.1. Applied to Interest (Till Judgment)</div>
+                        <div className="text-sm text-gray-600">2.1. Applied to Interest (Till Judgment)</div>
                         <div className="text-lg font-bold text-orange-600">
                           {calculations.upfrontAllocation.appliedToInterest.toLocaleString()} KES
                         </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          Remaining: {(parseFloat(outstandingInterest) - calculations.upfrontAllocation.appliedToInterest).toLocaleString()} KES
-                        </div>
                       </div>
                       <div className="text-center bg-white p-4 rounded-lg border border-orange-400">
-                        <div className="text-sm text-gray-600">3.2. Applied to Interest (After Judgment)</div>
+                        <div className="text-sm text-gray-600">2.2. Applied to Interest (After Judgment)</div>
                         <div className="text-lg font-bold text-orange-600">
                           {calculations.upfrontAllocation.appliedToInterestAfterJudgment.toLocaleString()} KES
                         </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          Remaining: {(parseFloat(outstandingInterestAfterJudgment) - calculations.upfrontAllocation.appliedToInterestAfterJudgment).toLocaleString()} KES
+                      </div>
+                      <div className="text-center bg-white p-4 rounded-lg border border-green-200">
+                        <div className="text-sm text-gray-600">4. Applied to Collateral</div>
+                        <div className="text-lg font-bold text-green-600">
+                          {calculations.upfrontAllocation.appliedToCollateral.toLocaleString()} KES
                         </div>
                       </div>
                       <div className="text-center bg-white p-4 rounded-lg border border-blue-200">
-                        <div className="text-sm text-gray-600">4. Applied to Principal</div>
+                        <div className="text-sm text-gray-600">5. Applied to Principal</div>
                         <div className="text-lg font-bold text-blue-600">
                           {calculations.upfrontAllocation.appliedToPrincipal.toLocaleString()} KES
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          Remaining: {(calculations.totalPrincipalWithGff - calculations.upfrontAllocation.appliedToPrincipal).toLocaleString()} KES
                         </div>
                       </div>
                     </div>
@@ -1294,7 +1278,7 @@ export default function LoanCalculator() {
                         Upfront payment is applied sequentially in priority order until fully allocated
                       </div>
                       <div className="text-xs text-yellow-700 mt-1">
-                        Priority 1 → Priority 2 → Priority 3.1 → Priority 3.2 → Priority 4
+                        Priority 1 → Priority 2.1 →  Priority 2.2 → Priority 3 → Priority 4
                       </div>
                     </div>
                   </div>
@@ -1400,9 +1384,9 @@ export default function LoanCalculator() {
                       <th className="px-3 py-3 text-right font-semibold">Base Princ</th>
                       <th className="px-3 py-3 text-right font-semibold border-r-2">Extra Princ</th>
                       <th className="px-3 py-3 text-right font-semibold">3rd Party</th>
-                      <th className="px-3 py-3 text-right font-semibold">Collateral</th>
                       <th className="px-3 py-3 text-right font-semibold">Out Int</th>
                       <th className="px-3 py-3 text-right font-semibold">Out Int After</th>
+                      <th className="px-3 py-3 text-right font-semibold">Collateral</th>
                       <th className="px-3 py-3 text-right font-semibold">Principal Comp</th>
                       <th className="px-3 py-3 text-right font-semibold">Balance</th>
                     </tr>
@@ -1443,15 +1427,16 @@ export default function LoanCalculator() {
                           <td className="px-3 py-2 text-right text-orange-600">
                             {row.thirdPartyPayment.toLocaleString()}
                           </td>
-                          <td className="px-3 py-2 text-right text-green-600">
-                            {row.collateralPayment.toLocaleString()}
-                          </td>
                           <td className="px-3 py-2 text-right text-orange-600">
                             {row.interestPrincipalPayment.toFixed(2)}
                           </td>
                           <td className="px-3 py-2 text-right text-orange-600">
                             {row.interestAfterJudgmentPayment?.toFixed(2) || '0.00'}
                           </td>
+                          <td className="px-3 py-2 text-right text-green-600">
+                            {row.collateralPayment.toLocaleString()}
+                          </td>
+
                           <td className="px-3 py-2 text-right text-blue-600">
                             {row.principalComponentsPayment.toLocaleString()}
                           </td>
@@ -1483,7 +1468,7 @@ export default function LoanCalculator() {
                     <br />
                     <strong>Payment Priority:</strong><br />
                     1. Interest (from Base Payment)<br />
-                    2. Waterfall Principal (from Base Payment): Third Party → Collateral → Outstanding Interest (Till Judgment) → Outstanding Interest (After Judgment) → Principal Components<br />
+                    2. Waterfall Principal (from Base Payment): Third Party → Outstanding Interest (Till Judgment) → Outstanding Interest (After Judgment)  → Collateral → Principal Components<br />
                     3. Extra Principal Reduction (from Extra Payment): Directly reduces principal components
                   </div>
                 </div>
